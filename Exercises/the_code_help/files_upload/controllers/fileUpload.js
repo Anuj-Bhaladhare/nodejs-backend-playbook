@@ -96,7 +96,7 @@ const videoUpload = async (req, res) => {
         }
 
         let vid_supported_type = ['webm', 'mpg', 'mp4', 'ogg', 'avi', 'mov', 'flv'];
-        let type = video_file.name.split(".").pop();
+        let type = video_file.name.split(".").pop().toLowerCase();
 
         if ( !isFileTypeSupported(type, vid_supported_type) ) {
             return res.status(400).json({
@@ -151,18 +151,62 @@ const videoUpload = async (req, res) => {
 
 
 const imageReducerUpload = async (req, res) => {
-    try {
+    try{
+        //data fetch
+        const { file_name, file_type, email} = req.body;
+        console.log(file_name, file_type, email);
 
-        console.log("imageUpload");
+        const file = req.files.imageFile;
+        console.log(file);
 
-    } catch (error) {
+        //Validation
+        const supportedTypes = ["jpg", "jpeg", "png"];
+        const fileType = file.name.split('.')[1].toLowerCase();
+        console.log("File Type:", fileType);
 
-        console.log(error);
-        return res.status(500).json({
-            "success": false,
-            "message": "Internal Server Error",
-            "error": error
-        })
+        if(!isFileTypeSupported(fileType, supportedTypes)) {
+            return res.status(400).json({
+                success:false,
+                message:'File format not supported',
+            })
+        }
+
+        //file format supported hai
+        console.log("Uploading to file_upload");
+
+        // reduce size of image by ading qulity -> 10, 20, 30, 40, 50, 60, 70, 80, 90
+        const response = await uploadFileToCloudinary(file, "file_upload", 30);
+        
+        console.log(response);
+
+        //db me entry save krni h
+        const db_result = await imageUploadModule(
+            file_name, 
+            response.secure_url, 
+            file_type, 
+            email
+        );
+        
+        if (db_result) {
+            return res.status(200).json({
+                "success": true,
+                "imageUrl": response.secure_url,
+                "message": 'Image Successfully Uploaded',
+            });
+        } else {
+            res.status(400).json({
+                "success": false,
+                "message": 'Image Not Uploaded',
+            });
+        }
+
+    }
+    catch(error) {
+        console.error(error);
+        res.status(400).json({
+            success:false,
+            message:'Something went wrong',
+        });
 
     }
 }
